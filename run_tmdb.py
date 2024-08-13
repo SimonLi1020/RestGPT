@@ -4,8 +4,10 @@ import logging
 import time
 import yaml
 
-from langchain.requests import Requests
-from langchain import OpenAI
+# from langchain.requests import Requests
+from langchain_community.utilities import Requests
+# from langchain import OpenAI
+from langchain_openai import OpenAI
 
 from utils import reduce_openapi_spec, ColorPrint, MyRotatingFileHandler
 from model import RestGPT
@@ -14,14 +16,14 @@ logger = logging.getLogger()
 
 
 def run(query, api_spec, requests_wrapper, simple_parser=False):
-    llm = OpenAI(model_name="text-davinci-003", temperature=0.0, max_tokens=256)
-    # llm = OpenAI(model_name="gpt-3.5-turbo-0301", temperature=0.0, max_tokens=256)
+    # llm = OpenAI(model_name="gpt-4", temperature=0.0, max_tokens=256)
+    llm = OpenAI(model_name="davinci-002", temperature=0.0, max_tokens=256)
     rest_gpt = RestGPT(llm, api_spec=api_spec, scenario='tmdb', requests_wrapper=requests_wrapper, simple_parser=simple_parser)
 
     logger.info(f"Query: {query}")
 
     start_time = time.time()
-    rest_gpt.run(query)
+    rest_gpt.invoke(query)
     logger.info(f"Execution Time: {int(time.time() - start_time)} seconds")
 
 

@@ -5,8 +5,8 @@ import logging
 from logging.handlers import BaseRotatingHandler
 from colorama import Fore
 
-from langchain.agents.agent_toolkits.openapi.spec import ReducedOpenAPISpec
-
+# from langchain.agents.agent_toolkits.openapi.spec import ReducedOpenAPISpec
+from langchain_community.agent_toolkits.openapi.spec import ReducedOpenAPISpec
 
 
 class ColorPrint:
@@ -99,6 +99,7 @@ def simplify_json(raw_json: dict):
 def fix_json_error(data: str, return_str=True):
     data = data.strip().strip('"').strip(",").strip("`")
     try:
+        # print(data)
         json.loads(data)
         return data
     except json.decoder.JSONDecodeError:

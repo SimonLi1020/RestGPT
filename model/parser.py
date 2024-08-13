@@ -10,6 +10,7 @@ import tiktoken
 
 from langchain.chains.base import Chain
 from langchain.chains.llm import LLMChain
+# from langchain_core.chains import RunnableSequence
 from langchain.prompts.prompt import PromptTemplate
 from langchain.llms.base import BaseLLM
 
@@ -209,7 +210,7 @@ class ResponseParser(Chain):
             response_schema = json.dumps(api_doc['responses']['content']['application/json']["schema"]['properties'], indent=4)
         elif 'application/json; charset=utf-8' in api_doc['responses']['content']:
             response_schema = json.dumps(api_doc['responses']['content']['application/json; charset=utf-8']["schema"]['properties'], indent=4)
-        encoder = tiktoken.encoding_for_model('text-davinci-003')
+        encoder = tiktoken.encoding_for_model('gpt-3.5-turbo')
         encoded_schema = encoder.encode(response_schema)
         max_schema_length = 2500
         if len(encoded_schema) > max_schema_length:
@@ -285,20 +286,24 @@ class ResponseParser(Chain):
 
     def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
         if self.code_parsing_schema_prompt is None or inputs['query'] is None:
-            extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            # extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            extract_code_chain = self.llm | self.llm_parsing_prompt
+            
             output = extract_code_chain.predict(query=inputs['query'], json=inputs['json'], api_param=inputs['api_param'], response_description=inputs['response_description'])
             return {"result": output}
         
-        extract_code_chain = LLMChain(llm=self.llm, prompt=self.code_parsing_schema_prompt)
+        # extract_code_chain = LLMChain(llm=self.llm, prompt=self.code_parsing_schema_prompt)
+        extract_code_chain = self.llm | self.code_parsing_schema_prompt
         code = extract_code_chain.predict(query=inputs['query'], response_description=inputs['response_description'], api_param=inputs['api_param'])
         logger.info(f"Code: \n{code}")
         json_data = json.loads(inputs["json"])
         repl = PythonREPL(_globals={"data": json_data})
-        res = repl.run(code)
+        res = repl.invoke(code)
         output = res
 
         if output is None or len(output) == 0:
-            extract_code_chain = LLMChain(llm=self.llm, prompt=self.code_parsing_response_prompt)
+            # extract_code_chain = LLMChain(llm=self.llm, prompt=self.code_parsing_response_prompt)
+            extract_code_chain = self.llm | self.code_parsing_response_prompt
             json_data = json.loads(inputs["json"])
             encoded_json = self.encoder.encode(inputs["json"])
             if len(encoded_json) > self.max_json_length_1:
@@ -309,11 +314,12 @@ class ResponseParser(Chain):
             code = extract_code_chain.predict(query=inputs['query'], json=simplified_json_data, api_param=inputs['api_param'])
             logger.info(f"Code: \n{code}")
             repl = PythonREPL(_globals={"data": json_data})
-            res = repl.run(code)
+            res = repl.invoke(code)
             output = res
 
         if output is None or len(output) == 0:
-            extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            # extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            extract_code_chain = self.llm | self.llm_parsing_prompt
             if len(encoded_json) > self.max_json_length_2:
                 simplified_json_data = self.encoder.decode(encoded_json[:self.max_json_length_2]) + '...'
             output = extract_code_chain.predict(query=inputs['query'], json=simplified_json_data, api_param=inputs['api_param'], response_description=inputs['response_description'])
@@ -322,7 +328,8 @@ class ResponseParser(Chain):
         if len(encoded_output) > self.max_output_length:
             output = self.encoder.decode(encoded_output[:self.max_output_length])
             logger.info(f"Output too long, truncating to {self.max_output_length} tokens")
-            postprocess_chain = LLMChain(llm=self.llm, prompt=self.postprocess_prompt)
+            # postprocess_chain = LLMChain(llm=self.llm, prompt=self.postprocess_prompt)
+            postprocess_chain = self.llm | self.postprocess_prompt
             output = postprocess_chain.predict(truncated_str=output)
 
         return {"result": output}
@@ -351,7 +358,7 @@ class SimpleResponseParser(Chain):
                 },
                 input_variables=["query", "json", "api_param", "response_description"]
             )
-            encoder = tiktoken.encoding_for_model('text-davinci-003')
+            encoder = tiktoken.encoding_for_model('gpt-3.5-turbo')
             super().__init__(llm=llm, llm_parsing_prompt=llm_parsing_prompt, encoder=encoder)
             return
 
@@ -364,7 +371,7 @@ class SimpleResponseParser(Chain):
             input_variables=["query", "json", "api_param", "response_description"]
         )
 
-        encoder = tiktoken.encoding_for_model('text-davinci-003')
+        encoder = tiktoken.encoding_for_model('gpt-3.5-turbo')
 
         super().__init__(llm=llm, llm_parsing_prompt=llm_parsing_prompt, encoder=encoder)
 
@@ -393,12 +400,14 @@ class SimpleResponseParser(Chain):
 
     def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
         if inputs['query'] is None:
-            extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            # extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+            extract_code_chain = self.llm | self.llm_parsing_prompt
             output = extract_code_chain.predict(query=inputs['query'], json=inputs['json'], api_param=inputs['api_param'], response_description=inputs['response_description'])
             return {"result": output}
         
         encoded_json = self.encoder.encode(inputs["json"])
-        extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+        # extract_code_chain = LLMChain(llm=self.llm, prompt=self.llm_parsing_prompt)
+        extract_code_chain = self.llm | self.llm_parsing_prompt
         if len(encoded_json) > self.max_json_length:
             encoded_json = self.encoder.decode(encoded_json[:self.max_json_length]) + '...'
         output = extract_code_chain.predict(query=inputs['query'], json=encoded_json, api_param=inputs['api_param'], response_description=inputs['response_description'])

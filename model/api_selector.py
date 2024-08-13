@@ -3,6 +3,7 @@ import re
 import logging
 
 from langchain.chains.base import Chain
+# from langchain.chains.llm import RunnableSequence
 from langchain.chains.llm import LLMChain
 from langchain.prompts.base import BasePromptTemplate
 from langchain.prompts.prompt import PromptTemplate
@@ -191,5 +192,5 @@ class APISelector(Chain):
             api_selector_chain_output = api_selector_chain.run(plan=inputs['plan'], background=inputs['background'], agent_scratchpad=scratchpad, stop=self._stop)
             api_plan = re.sub(r"API calling \d+: ", "", api_selector_chain_output).strip()
             logger.info(f"API Selector: {api_plan}")
-
+        
         return {"result": api_plan}

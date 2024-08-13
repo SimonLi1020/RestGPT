@@ -6,8 +6,10 @@ import time
 import yaml
 
 import spotipy
-from langchain.requests import Requests
-from langchain import OpenAI
+# from langchain.requests import Requests
+from langchain_community.utilities import Requests
+# from langchain import OpenAI
+from langchain_openai import OpenAI
 
 from utils import reduce_openapi_spec, ColorPrint
 from model import RestGPT
@@ -29,20 +31,10 @@ def main():
     )
     logger.setLevel(logging.INFO)
 
-    scenario = input("Please select a scenario (TMDB/Spotify): ")
-    scenario = scenario.lower()
+    print("Welcome to AI POC Spotify!")
+    scenario = "spotify"
 
-    if scenario == 'tmdb':
-        with open("specs/tmdb_oas.json") as f:
-            raw_tmdb_api_spec = json.load(f)
-
-        api_spec = reduce_openapi_spec(raw_tmdb_api_spec, only_required=False)
-
-        access_token = os.environ["TMDB_ACCESS_TOKEN"]
-        headers = {
-            'Authorization': f'Bearer {access_token}'
-        }
-    elif scenario == 'spotify':
+    if scenario == 'spotify':
         with open("specs/spotify_oas.json") as f:
             raw_api_spec = json.load(f)
 
@@ -58,13 +50,11 @@ def main():
 
     requests_wrapper = Requests(headers=headers)
 
-    llm = OpenAI(model_name="text-davinci-003", temperature=0.0, max_tokens=700)
+    # llm = OpenAI(model_name="gpt-4", temperature=0.0, max_tokens=700)
+    llm = OpenAI(model_name="davinci-002", temperature=0.0, max_tokens=700)
     rest_gpt = RestGPT(llm, api_spec=api_spec, scenario=scenario, requests_wrapper=requests_wrapper, simple_parser=False)
 
-    if scenario == 'tmdb':
-        query_example = "Give me the number of movies directed by Sofia Coppola"
-    elif scenario == 'spotify':
-        query_example = "Add Summertime Sadness by Lana Del Rey in my first playlist"
+    query_example = "Add Summertime Sadness by Lana Del Rey in my first playlist"
     print(f"Example instruction: {query_example}")
     query = input("Please input an instruction (Press ENTER to use the example instruction): ")
     if query == '':

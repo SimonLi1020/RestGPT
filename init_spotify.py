@@ -4,7 +4,8 @@ import logging
 import yaml
 
 import spotipy.util as util
-from langchain.requests import Requests
+# from langchain.requests import Requests
+from langchain_community.utilities import Requests
 
 from utils import init_spotify
 

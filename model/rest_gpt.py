@@ -9,7 +9,8 @@ from langchain.chains.base import Chain
 from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.llms.base import BaseLLM
 
-from langchain.requests import RequestsWrapper
+# from langchain.requests import RequestsWrapper
+from langchain_community.utilities import RequestsWrapper
 
 from .planner import Planner
 from .api_selector import APISelector
@@ -147,6 +148,7 @@ class RestGPT(Chain):
             tmp_planner_history = [plan]
             api_selector_history: List[Tuple[str, str, str]] = []
             api_selector_background = self._get_api_selector_background(planner_history)
+            # logger.info(f"--------API Selector Background--------: {api_selector_background}")
             api_plan = self.api_selector.run(plan=plan, background=api_selector_background)
 
             finished = re.match(r"No API call needed.(.*)", api_plan)
@@ -158,6 +160,7 @@ class RestGPT(Chain):
 
             planner_history.append((plan, execution_res))
             api_selector_history.append((plan, api_plan, execution_res))
+            # logger.info(f"-------Execution---------: {execution_res}")
 
             plan = self.planner.run(input=query, history=planner_history)
             logger.info(f"Planner: {plan}")

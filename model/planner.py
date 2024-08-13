@@ -3,6 +3,7 @@ import re
 
 from langchain.chains.base import Chain
 from langchain.chains.llm import LLMChain
+# from langchain_core.chains import RunnableSequence
 from langchain.prompts.prompt import PromptTemplate
 from langchain.llms.base import BaseLLM
 
@@ -146,8 +147,11 @@ class Planner(Chain):
             input_variables=["input"]
         )
         planner_chain = LLMChain(llm=self.llm, prompt=planner_prompt)
+        # planner_chain = self.llm | planner_prompt
         planner_chain_output = planner_chain.run(input=inputs['input'], stop=self._stop)
+        # print("============Planned output:", planner_chain_output)
 
         planner_chain_output = re.sub(r"Plan step \d+: ", "", planner_chain_output).strip()
+        # print("============Planned output:", planner_chain_output)
 
         return {"result": planner_chain_output}

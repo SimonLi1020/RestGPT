@@ -11,7 +11,9 @@ import tiktoken
 
 from langchain.chains.base import Chain
 from langchain.chains.llm import LLMChain
-from langchain.requests import RequestsWrapper
+# from langchain_core.chains import RunnableSequence
+# from langchain.requests import RequestsWrapper
+from langchain_community.utilities import RequestsWrapper
 from langchain.prompts.prompt import PromptTemplate
 from langchain.llms.base import BaseLLM
 
@@ -176,16 +178,19 @@ class Caller(Chain):
         return scratchpad
 
     def _get_action_and_input(self, llm_output: str) -> Tuple[str, str]:
+        logger.info(f"===========LLM output: {llm_output}")
         if "Execution Result:" in llm_output:
             return "Execution Result", llm_output.split("Execution Result:")[-1].strip()
         # \s matches against tab/newline/whitespace
         regex = r"Operation:[\s]*(.*?)[\n]*Input:[\s]*(.*)"
         match = re.search(regex, llm_output, re.DOTALL)
+        print("====================match: ", match)
         if not match:
             # TODO: not match, just return
             raise ValueError(f"Could not parse LLM output: `{llm_output}`")
         action = match.group(1).strip()
         action_input = match.group(2)
+        # print("--------------------action_input: ", action_input)
         if action not in ["GET", "POST", "DELETE", "PUT"]:
             raise NotImplementedError
         
@@ -262,7 +267,7 @@ class Caller(Chain):
         if not self.with_response and 'responses' in tmp_docs:
             tmp_docs.pop("responses")
         tmp_docs = yaml.dump(tmp_docs)
-        encoder = tiktoken.encoding_for_model('text-davinci-003')
+        encoder = tiktoken.encoding_for_model('gpt-3.5-turbo')
         encoded_docs = encoder.encode(tmp_docs)
         if len(encoded_docs) > 1500:
             tmp_docs = encoder.decode(encoded_docs[:1500])
@@ -278,6 +283,7 @@ class Caller(Chain):
         )
         
         caller_chain = LLMChain(llm=self.llm, prompt=caller_prompt)
+        # caller_chain = self.llm | caller_prompt
 
         while self._should_continue(iterations, time_elapsed):
             scratchpad = self._construct_scratchpad(intermediate_steps)
@@ -321,7 +327,7 @@ class Caller(Chain):
                 "params": params if params is not None else "No parameters",
                 "data": request_body if request_body is not None else "No request body",
             }
-            parsing_res = response_parser.run(query=query, response_description=desc, api_param=params_or_data, json=response)
+            parsing_res = response_parser.invoke(query=query, response_description=desc, api_param=params_or_data, json=response)
             logger.info(f"Parser: {parsing_res}")
 
             intermediate_steps.append((caller_chain_output, parsing_res))
